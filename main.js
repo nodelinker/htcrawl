@@ -51,6 +51,7 @@ exports.launch = async function(url, options){
 	var crawler = new Crawler(url, options, browser);
 	await crawler.bootstrapPage();
 	setTimeout(async function reqloop(){
+		// 处理xhr || fetch 完成或失败状态
 		for(let i = crawler._pendingRequests.length - 1; i >=0; i--){
 			let r = crawler._pendingRequests[i];
 			let events = {xhr: "xhrCompleted", fetch: "fetchCompleted"};
@@ -195,11 +196,13 @@ Crawler.prototype.errors = function(){
 }
 // returns after all ajax&c have been completed
 Crawler.prototype.load = async function(){
+	// 加载URL
 	const resp = await this._goto(this.targetUrl);
 	return await this._afterNavigation(resp);
 };
 
 Crawler.prototype._goto = async function(url){
+	// 访问页面
 	if(this.options.verbose)console.log("LOAD")
 	var ret = null;
 	this._allowNavigation = true;
@@ -214,6 +217,7 @@ Crawler.prototype._goto = async function(url){
 	return ret;
 }
 Crawler.prototype._afterNavigation = async function(resp){
+	// 处理响应数据
 	var _this = this;
 	var assertContentType = function(hdrs){
 		let ctype = 'content-type' in hdrs ? hdrs['content-type'] : "";
@@ -238,13 +242,18 @@ Crawler.prototype._afterNavigation = async function(resp){
 		if(!assertContentType(hdrs)){
 			throw "Content type is not text/html";
 		}
+		// 当前页面根元素
 		_this.documentElement = await this._page.evaluateHandle( () => document.documentElement);
 		await _this._page.evaluate(async function(){
+			// 监测DOM变化，存储数据
 			window.__PROBE__.DOMMutations = [];
 			let observer = new MutationObserver(mutations => {
+				debugger
 				for(let m of mutations){
 					if(m.type != 'childList' || m.addedNodes.length == 0)continue;
 					for(let e of m.addedNodes){
+						console.log(e)
+					
 						window.__PROBE__.DOMMutations.push(e)
 					}
 				}
@@ -266,7 +275,7 @@ Crawler.prototype._afterNavigation = async function(resp){
 };
 
 Crawler.prototype.waitForRequestsCompletion = async function(){
-	await this._waitForRequestsCompletion();
+	await this._waitForRequestsCompletion(); 
 	await this._page.evaluate(async function(){ // use Promise.all ??
 		await window.__PROBE__.waitJsonp();
 		await window.__PROBE__.waitWebsocket();
@@ -300,6 +309,7 @@ Crawler.prototype.stop = function(){
 
 
 Crawler.prototype.on = function(eventName, handler){
+	// 回调函数
 	eventName = eventName.toLowerCase();
 	if(!(eventName in this.probeEvents)){
 		throw("unknown event name: " + eventName);
@@ -309,6 +319,7 @@ Crawler.prototype.on = function(eventName, handler){
 
 
 Crawler.prototype.probe = function(method, args){
+	// 未使用
 	var _this = this;
 
 	return new Promise( (resolve, reject) => {
@@ -321,6 +332,7 @@ Crawler.prototype.probe = function(method, args){
 
 
 Crawler.prototype.dispatchProbeEvent = async function(name, params) {
+	// 加载回调函数
 	name = name.toLowerCase();
 	var ret, evt = {
 		name: name,
@@ -340,6 +352,7 @@ Crawler.prototype.dispatchProbeEvent = async function(name, params) {
 }
 
 Crawler.prototype.handleRequest = async function(req){
+	// 处理拦截的 xhr || fetch 请求，将
 	let extrah = req.headers();
 	let type = req.resourceType(); // xhr || fetch
 	delete extrah['referer'];
@@ -359,17 +372,18 @@ Crawler.prototype.handleRequest = async function(req){
 	// add to pending ajax before dispatchProbeEvent.
 	// Since dispatchProbeEvent can await for something (and take some time) we need to be sure that the current xhr is awaited from the main loop
 	let ro = {p:req, h:r};
-	this._pendingRequests.push(ro);
+	this._pendingRequests.push(ro); // 处理xhr || fetch 
 	let uRet = await this.dispatchProbeEvent(type, {request:r});
 	if(uRet){
 		req.continue();
 	} else {
-		this._pendingRequests.splice(this._pendingRequests.indexOf(ro), 1);
+		this._pendingRequests.splice(this._pendingRequests.indexOf(ro), 1);  // 剔除
 		req.abort('aborted');
 	}
 }
 
 Crawler.prototype._waitForRequestsCompletion = function(){
+	// 等待请求完成
 	var requests = this._pendingRequests;
 	var reqPerformed = false;
 	return new Promise( (resolve, reject) => {
@@ -410,7 +424,7 @@ Crawler.prototype.bootstrapPage = async function(){
 	//if(options.verbose)console.log("new page")
 	await page.setRequestInterception(true);
 	if(options.bypassCSP){
-		await page.setBypassCSP(true);
+		await page.setBypassCSP(true); // 禁用 CSP
 	}
 
 	// setTimeout(async function reqloop(){
@@ -637,6 +651,7 @@ Crawler.prototype.popMutation = async function(){
 
 
 Crawler.prototype.getEventsForElement = async function(el){
+	// 获取当前element的所有事件类型
 	const events = await this._page.evaluate( el => window.__PROBE__.getEventsForElement(el), el != this._page ? el : this.documentElement);
 	const l = await this.getElementEventListeners(el);
 	return events.concat(l.listeners.map(i => i.type));
@@ -672,6 +687,7 @@ Crawler.prototype.getDOMTreeAsArray = async function(node){
 
 
 Crawler.prototype.isAttachedToDOM = async function(node){
+	// 判断DOM是否是位于根页面，或者存在html类型
 	if(node == this._page){
 		return true;
 	}
@@ -686,6 +702,7 @@ Crawler.prototype.isAttachedToDOM = async function(node){
 };
 
 Crawler.prototype.triggerElementEvent = async function(el, event){
+	// 处理事件
 	await this._page.evaluate((el, event) => {
 		window.__PROBE__.triggerElementEvent(el, event)
 	}, el != this._page ? el : this.documentElement, event)
@@ -705,14 +722,24 @@ Crawler.prototype.getElementText = async function(el){
 
 
 Crawler.prototype.fillInputValues = async function(el){
+	// 处理input元素中得内容并处理事件
 	await this._page.evaluate(el => {
 		window.__PROBE__.fillInputValues(el);
 	}, el != this._page ? el : this.documentElement)
 }
 
 
+Crawler.prototype.getXpathSelector = async function(el){
+	// 获取xpath
+	await this._page.evaluate(el => {
+		window.__PROBE__.getXpathSelector(el);
+	}, el)
+}
+
+
 
 Crawler.prototype.getElementSelector = async function(el){
+	// 唯一的 CSS 选择器
 	await this._page.evaluate(el => {
 		window.__PROBE__.getElementSelector(el);
 	}, el != this._page ? el : this.documentElement)
@@ -729,7 +756,7 @@ Crawler.prototype._crawlDOM = async function(node, layer){
 		return;
 	}
 	// console.log(">>>>:" + layer)
-	var domArr = await this.getDOMTreeAsArray(node);
+	var domArr = await this.getDOMTreeAsArray(node); // 获取当前节点的所有子节点
 
 	this._trigger = {};
 	if(this.options.crawlmode == "random"){
@@ -744,19 +771,20 @@ Crawler.prototype._crawlDOM = async function(node, layer){
 	// await this.fillInputValues(node);
 
 	if(layer == 0){
-		await this.dispatchProbeEvent("start");
+		await this.dispatchProbeEvent("start");  // 
 	}
 
 	//let analyzed = 0;
 	for(let el of dom){
 		if(this._stop) return;
 		//console.log("analyze element " + el);
-		let elsel = await this.getElementSelector(el);
+		let elsel = await this.getElementSelector(el); // 
 		if(! await this.isAttachedToDOM(el)){ // @TODO TEST ME
 			uRet = await this.dispatchProbeEvent("earlydetach", { node: elsel });
 			if(!uRet) continue;
 		}
 		for(let event of await this.getEventsForElement(el)){
+			// 遍历当前节点的所有事件
 			if(this._stop) return;
 			if(this.options.triggerEvents){
 				uRet = await this.dispatchProbeEvent("triggerevent", {node: elsel, event: event});
@@ -770,6 +798,7 @@ Crawler.prototype._crawlDOM = async function(node, layer){
 			//console.log("waiting requests to compete.... DONE"  + this._pendingRequests)
 
 			newEls = [];
+			// 监测
 			newRoot = await this.popMutation();
 			while(newRoot.asElement()){
 				newEls.push(newRoot);
@@ -777,6 +806,7 @@ Crawler.prototype._crawlDOM = async function(node, layer){
 			}
 
 			for(var a = newEls.length - 1; a >= 0; a--){
+				// 根据内容过滤DOM
 				var txt = await this.getElementText(newEls[a]);
 				if(!txt || txt.length < 50){
 					continue;
@@ -833,6 +863,7 @@ Crawler.prototype.getElementRemoteId = async function(el){
 
 
 Crawler.prototype.getElementEventListeners = async function(el){
+	// 
 	if(el == this._page){
 		el = this.documentElement;
 	}
