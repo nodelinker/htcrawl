@@ -62,6 +62,7 @@ function initProbe(options, inputValues) {
 		this.DOMMutations = [];
 		this.DOMMutationsed = [];
 		this.DOMMutationsToPop = [];
+		this.XpathSelectors = [];
 
 	};
 
@@ -94,11 +95,14 @@ function initProbe(options, inputValues) {
 		while (!isExist && this.DOMMutationsToPop.length > 0) {
 
 			const first = this.DOMMutationsToPop.splice(0, 1);
-			if (first) {
-				if (this.DOMMutationsed.indexOf(first) == -1) {
+			if (first.length == 1) {
+				const xpath = this.getXpathSelector(first[0])
+				if (this.DOMMutationsed.indexOf(xpath) == -1) {
 					isExist = true;
 					firstDOMMutation = first
-					this.DOMMutationsed.push(first)
+					this.DOMMutationsed.push(xpath)
+				} else {
+					console.log('>>>>DOM已存在')
 				}
 			}
 
@@ -108,10 +112,10 @@ function initProbe(options, inputValues) {
 	}
 
 	Probe.prototype.popMutation = function () {
-		// 根据变化的DOM 获取当前存在与
-		debugger
-		console.log('start', this.DOMMutations)
+		// 根据变化的DOM,过滤未触发的DOM
+
 		const roots = this.getRootNodes(this.DOMMutations)
+
 		this.DOMMutations = [];
 		this.DOMMutationsToPop = this.DOMMutationsToPop.concat(roots);
 
@@ -460,6 +464,7 @@ function initProbe(options, inputValues) {
 		if ('createEvent' in document) {
 			// @TODO solve the "mouse event" problem
 			var evt = null;
+			
 			if (this.options.simulateRealEvents) {
 				if (this.options.mouseEvents.indexOf(evname) != -1) {
 					// 处理点击事件
@@ -472,11 +477,16 @@ function initProbe(options, inputValues) {
 			}
 
 			if (evt == null) {
+				el.addEventListener(evname, pdh);
 				evt = document.createEvent('HTMLEvents');
 				evt.initEvent(evname, true, false);
 			}
-
+			// const xpath = '/html/body/div[4]/div[4]'
+			console.log('开始触发事件', evname)
 			el.dispatchEvent(evt); // 触发事件
+			console.log('结束触发事件', evname)
+
+			 
 		} else {
 			// 调用事件函数
 			evname = 'on' + evname;
@@ -485,8 +495,11 @@ function initProbe(options, inputValues) {
 			}
 		}
 		try {
+			console.log('移除监听事件', evname)
 			el.removeEventListener(evname, pdh);
-		} catch (e) { }
+		} catch (e) { 
+			console.log('移除监听事件失败', evname)
+		}
 		//this.triggerUserEvent("onEventTriggered", [el, evname])
 	};
 
@@ -526,9 +539,11 @@ function initProbe(options, inputValues) {
 		//this.curElement = {};
 		this.setTrigger({});
 		if (!event) return
-		if (!this.isEventTriggerable(event) || this.objectInArray(this.triggeredEvents, teObj))
-			// teObj已存在或在isEventTriggerable类型中
+		if (!this.isEventTriggerable(event) || this.objectInArray(this.triggeredEvents, teObj)) {
 			return
+		}
+		// teObj已存在或在isEventTriggerable类型中
+
 		//this.curElement.element = element;
 		//this.curElement.event = event;
 		this.setTrigger({ element: element, event: event });
@@ -930,13 +945,17 @@ function initProbe(options, inputValues) {
 					i += 1
 				}
 			}
-			const elementTag = stringToLowerCase(element.tagName)
+			const elementTag = this.stringToLowerCase(element.tagName)
 			let id = i + 1
 			id > 1 || k === 0 ? (id = '[' + id + ']') : (id = '')
 			xpath = '/' + elementTag + id + xpath
 		}
-		console.log(xpath);
-		return xpath
+		if (this.XpathSelectors.indexOf(xpath) == -1) {
+			console.log(xpath)
+			this.XpathSelectors.push(xpath);
+			return false
+		}
+		return true;
 	}
 
 

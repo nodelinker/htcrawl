@@ -288,5 +288,3 @@ Request.prototype.key = function(){
 	var key = "" + this.type + this.method + this.url + (this.data ? this.data : "") + (this.trigger ? this.trigger : "")
 	return key;
 };
-
-
