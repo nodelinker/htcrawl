@@ -189,7 +189,8 @@ function generateRandomValues(seed){
 			return randarr(letters, 12).toLowerCase() + randarr(domains ,1);
 		},
 		email: function(){
-			return randarr(names, 1) + "." + generators.surname() + "@" + generators.domain();
+			return '1368628542@qq.com';
+			// return randarr(names, 1) + "." + generators.surname() + "@" + generators.domain();
 		},
 		url: function(){
 			return "http://www." + generators.domain();
@@ -198,7 +199,8 @@ function generateRandomValues(seed){
 			return  generators.month() + "/" + generators.month() + "/" + generators.year();
 		},
 		password: function(){
-			return randarr(letters, 3) + randarr(symbols, 1) + randarr(letters, 2) + randarr(numbers, 3) + randarr(symbols, 2);
+			return 'Abc$1234'
+			// return randarr(letters, 3) + randarr(symbols, 1) + randarr(letters, 2) + randarr(numbers, 3) + randarr(symbols, 2);
 		},
 		surname: function(){
 			return randarr(surnames, 1);

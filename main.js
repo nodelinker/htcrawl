@@ -15,6 +15,7 @@ const puppeteer = require('puppeteer');
 const defaults = require('./options').options;
 const probe = require("./probe");
 const textComparator = require("./shingleprint");
+const loginHelper = require("./login-helper.js");
 
 const utils = require('./utils');
 const process = require('process');
@@ -50,16 +51,16 @@ exports.launch = async function (url, options) {
 	var browser = await puppeteer.launch({ headless: options.headlessChrome, ignoreHTTPSErrors: true, args: chromeArgs });
 	var crawler = new Crawler(url, options, browser);
 	await crawler.bootstrapPage();
-	setTimeout(async function reqloop() {
-		// 处理xhr || fetch 完成或失败状态
+
+	const intervalId = setInterval(async () => {
+		// 处理 xhr || fetch 完成或失败状态
 		for (let i = crawler._pendingRequests.length - 1; i >= 0; i--) {
 			let r = crawler._pendingRequests[i];
 			let events = { xhr: "xhrCompleted", fetch: "fetchCompleted" };
+			try {
 			if (r.p.response()) {
 				let rtxt = null;
-				try {
-					rtxt = await r.p.response().text();
-				} catch (e) { }
+				rtxt = await r.p.response().text();
 				await crawler.dispatchProbeEvent(events[r.h.type], {
 					request: r.h,
 					response: rtxt
@@ -70,10 +71,18 @@ exports.launch = async function (url, options) {
 				//console.log("*** FAILUREResponse for " + r.p.url())
 				crawler._pendingRequests.splice(i, 1);
 			}
+		} catch (e) {
+			crawler._pendingRequests.splice(i, 1);
+		 }
 		}
-		setTimeout(reqloop, 50);
+
+		if (crawler._stop) {
+			// 爬取结束停止循环器
+			clearInterval(intervalId);
+		}
 	}, 50);
 
+	
 	browser.on("targetcreated", async (target) => {
 		if (crawler._allowNewWindows) {
 			return;
@@ -81,6 +90,10 @@ exports.launch = async function (url, options) {
 		const p = await target.page();
 		if (p) p.close();
 	});
+
+	if (crawler._stop) {
+		await browser.close();
+	}
 
 	return crawler;
 };
@@ -248,7 +261,7 @@ Crawler.prototype._afterNavigation = async function (resp) {
 			// 监测DOM变化，存储数据
 			window.__PROBE__.DOMMutations = [];
 			let observer = new MutationObserver(mutations => {
-				console.log('触发')
+				console.log('DOM变化')
 				for (let m of mutations) {
 					if (m.type != 'childList' || m.addedNodes.length == 0) continue;
 					for (let e of m.addedNodes) {
@@ -283,6 +296,14 @@ Crawler.prototype.waitForRequestsCompletion = async function () {
 Crawler.prototype.start = async function () {
 
 	if (!this._loaded) {
+		// await this._goto("http://192.168.239.129:3000/#/login");
+		// await loginHelper(this._page, {
+		// 	"url": "http://192.168.239.129:3000/#/login",
+		// 	"name":{
+		// 	  "email": "1368628542@qq.com",
+		// 	  "password": "Abc$1234"
+		// 	}
+		//   }, 200);
 		await this.load();
 	}
 
@@ -290,6 +311,8 @@ Crawler.prototype.start = async function () {
 		this._stop = false;
 		await this.fillInputValues(this._page);
 		await this._crawlDOM();
+		await this._browser.close();
+		this._stop = true;
 		return this;
 	} catch (e) {
 		this._errors.push(["navigation", "navigation aborted"]);
@@ -303,6 +326,7 @@ Crawler.prototype.start = async function () {
 
 Crawler.prototype.stop = function () {
 	this._stop = true;
+
 }
 
 
@@ -350,7 +374,7 @@ Crawler.prototype.dispatchProbeEvent = async function (name, params) {
 }
 
 Crawler.prototype.handleRequest = async function (req) {
-	// 处理拦截的 xhr || fetch 请求，将
+	// 处理拦截的 xhr || fetch 请求
 	let extrah = req.headers();
 	let type = req.resourceType(); // xhr || fetch
 	delete extrah['referer'];
@@ -375,7 +399,7 @@ Crawler.prototype.handleRequest = async function (req) {
 	if (uRet) {
 		req.continue();
 	} else {
-		this._pendingRequests.splice(this._pendingRequests.indexOf(ro), 1);  // 剔除
+		this._pendingRequests.splice(this._pendingRequests.indexOf(ro), 1);
 		req.abort('aborted');
 	}
 }
@@ -643,7 +667,7 @@ Crawler.prototype.clickToNavigate = async function (element, timeout) {
 
 
 Crawler.prototype.popMutation = async function () {
-	return await this._page.evaluateHandle(() => window.__PROBE__.popMutation())
+	return await this._page.evaluateHandle(() => { return window.__PROBE__.popMutation() });
 }
 
 
@@ -700,33 +724,11 @@ Crawler.prototype.isAttachedToDOM = async function (node) {
 };
 
 Crawler.prototype.triggerElementEvent = async function (el, event) {
-	// // 处理事件
-	// await this._page.evaluate((el, event) => {
-	// 	window.__PROBE__.triggerElementEvent(el, event)
-	// }, el != this._page ? el : this.documentElement, event)
-	const timeout = 5000; // 设置超时时间，单位是毫秒
+	// 处理事件
+	await this._page.evaluate((el, event) => {
+		window.__PROBE__.triggerElementEvent(el, event)
+	}, el != this._page ? el : this.documentElement, event)
 
-	// 使用Promise.race来等待操作完成或超时
-	const result = await Promise.race([
-		this._page.evaluate((el, event) => {
-			window.__PROBE__.triggerElementEvent(el, event);
-		}, el != this._page ? el : this.documentElement, event),
-
-		// 创建一个等待超时的Promise
-		new Promise((_, reject) => {
-			setTimeout(() => {
-				reject(new Error('Operation timed out'));
-			}, timeout);
-		})
-	]);
-	// 根据result的值来判断操作是否成功或超时
-	if (result instanceof Error && result.message === 'Operation timed out') {
-		console.log('操作超时');
-		// 在此处执行超时后的处理逻辑
-	} else {
-		console.log('操作成功');
-		// 在此处执行操作成功后的处理逻辑
-	}
 }
 
 Crawler.prototype.getElementText = async function (el) {
@@ -751,9 +753,15 @@ Crawler.prototype.fillInputValues = async function (el) {
 
 
 Crawler.prototype.getXpathSelector = async function (el) {
-	// 获取xpath
+	// 判断xpath
 	return await this._page.evaluate(el => {
-		return window.__PROBE__.getXpathSelector(el);
+		const xpath = window.__PROBE__.getXpathSelector(el);
+		if (window.__PROBE__.XpathSelectors.indexOf(xpath) == -1) {
+			console.log(xpath)
+			window.__PROBE__.XpathSelectors.push(xpath);
+			return false
+		}
+		return true;
 	}, el)
 
 }
@@ -777,7 +785,7 @@ Crawler.prototype._crawlDOM = async function (node, layer) {
 		//console.log(">>>>RECURSON LIMIT REACHED :" + layer)
 		return;
 	}
-	console.log(">>>>>>>>>>>>>>>>>>:" + layer)
+
 	var domArr = await this.getDOMTreeAsArray(node); // 获取当前节点的所有子节点
 
 	this._trigger = {};
@@ -790,14 +798,19 @@ Crawler.prototype._crawlDOM = async function (node, layer) {
 	var newRoot;
 	var uRet;
 
+
 	// await this.fillInputValues(node);
 
 	if (layer == 0) {
 		await this.dispatchProbeEvent("start");  // 
 	}
 
-	//let analyzed = 0;
+
+	let analyzed = 0;
 	for (let el of dom) {
+
+		analyzed = analyzed + 1
+		console.log("------layer--------" + layer + "------domlenth------" + dom.length + '------analyzed-------' + analyzed)
 		if (this._stop) return;
 		if (await this.getXpathSelector(el)) continue;
 		//console.log("analyze element " + el);
@@ -812,7 +825,7 @@ Crawler.prototype._crawlDOM = async function (node, layer) {
 			if (this.options.triggerEvents) {
 				uRet = await this.dispatchProbeEvent("triggerevent", { node: elsel, event: event });
 				if (!uRet) continue;
-				console.log("analyze element " + event + "-----------" + el)
+				// console.log("analyze element " + event + "-----------" + el)
 				await this.triggerElementEvent(el, event);
 				await this.dispatchProbeEvent("eventtriggered", { node: elsel, event: event });
 			}

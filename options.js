@@ -56,15 +56,15 @@ exports.options = {
 	/* always trigger these events since event delegation mays "confuse" the triggering of mapped events */
 	// NOTE: trigger mouseUP FIRST to prevent up and down to be considered a click
 	eventsMap: {
-		'button':['click','dblclick','keydown','keyup','mouseup'],
-		'select':['change','click','dblclick','keydown','keyup','mouseup'],
-		'input':['change','click','dblclick','blur','focus','keydown','keyup','mouseup'],
-		'a':['click','dblclick','keydown','keyup','mouseup'],
-		'textarea':['change','click','dblclick','blur','focus','keydown','keyup','mouseup'],
-		'span':['click','dblclick','mouseup'],
-		'td':['click','dblclick','mouseup'],
-		'tr':['click','dblclick','mouseup'],
-		'div':['click','dblclick','mouseup']
+		'button':['click','dblclick','keydown','keyup','mouseup', 'mousedown'],
+		'select':['change','click','dblclick','keydown','keyup','mouseup', 'mousedown'],
+		'input':['change','click','dblclick','blur','focus','keydown','keyup','mouseup', 'mousedown'],
+		'a':['click','dblclick','keydown','keyup','mouseup', 'mousedown'],
+		'textarea':['change','click','dblclick','blur','focus','keydown','keyup','mouseup', 'mousedown'],
+		'span':['click','dblclick','mouseup', 'mousedown'],
+		'td':['click','dblclick','mouseup', 'mousedown'],
+		'tr':['click','dblclick','mouseup', 'mousedown'],
+		'div':['click','dblclick','mouseup', 'mousedown']
 	},
 	proxy: null,
 	loadWithPost: false,

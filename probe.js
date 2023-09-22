@@ -97,13 +97,12 @@ function initProbe(options, inputValues) {
 			const first = this.DOMMutationsToPop.splice(0, 1);
 			if (first.length == 1) {
 				const xpath = this.getXpathSelector(first[0])
+				
 				if (this.DOMMutationsed.indexOf(xpath) == -1) {
 					isExist = true;
-					firstDOMMutation = first
+					firstDOMMutation.push(first[0]);
 					this.DOMMutationsed.push(xpath)
-				} else {
-					console.log('>>>>DOM已存在')
-				}
+				} else {}
 			}
 
 		}
@@ -115,10 +114,11 @@ function initProbe(options, inputValues) {
 		// 根据变化的DOM,过滤未触发的DOM
 
 		const roots = this.getRootNodes(this.DOMMutations)
-
+		// console.log('DOMMutations', this.DOMMutations.length)
 		this.DOMMutations = [];
 		this.DOMMutationsToPop = this.DOMMutationsToPop.concat(roots);
-
+		// console.log('DOMMutationsToPop', this.DOMMutationsToPop.length)
+		// debugger;
 		const first = this.filterMutation()
 		const firstDOMMutation = first.length == 1 ? first[0] : null;
 
@@ -402,6 +402,23 @@ function initProbe(options, inputValues) {
 			// update angularjs model
 			this.trigger(els[a], 'input');
 		}
+		
+		let nodeListSubmit = element.querySelectorAll("[type=submit]");
+		if (nodeListSubmit.length == 0){
+			nodeListSubmit = element.querySelectorAll("[type=button]");
+		}
+		for (let node of nodeListSubmit) {
+			try {
+				if (node.formAction == "http://192.168.239.129:3000/#/login"){
+					console.log('登录')
+					await node.click();
+				}
+			} catch (e) {
+				console.error(e);
+			}
+		}
+
+
 		// return ret;
 	};
 
@@ -477,16 +494,12 @@ function initProbe(options, inputValues) {
 			}
 
 			if (evt == null) {
-				el.addEventListener(evname, pdh);
 				evt = document.createEvent('HTMLEvents');
 				evt.initEvent(evname, true, false);
 			}
-			// const xpath = '/html/body/div[4]/div[4]'
-			console.log('开始触发事件', evname)
-			el.dispatchEvent(evt); // 触发事件
-			console.log('结束触发事件', evname)
 
-			 
+			el.dispatchEvent(evt); // 触发事件
+
 		} else {
 			// 调用事件函数
 			evname = 'on' + evname;
@@ -495,11 +508,8 @@ function initProbe(options, inputValues) {
 			}
 		}
 		try {
-			console.log('移除监听事件', evname)
 			el.removeEventListener(evname, pdh);
-		} catch (e) { 
-			console.log('移除监听事件失败', evname)
-		}
+		} catch (e) {}
 		//this.triggerUserEvent("onEventTriggered", [el, evname])
 	};
 
@@ -950,12 +960,8 @@ function initProbe(options, inputValues) {
 			id > 1 || k === 0 ? (id = '[' + id + ']') : (id = '')
 			xpath = '/' + elementTag + id + xpath
 		}
-		if (this.XpathSelectors.indexOf(xpath) == -1) {
-			console.log(xpath)
-			this.XpathSelectors.push(xpath);
-			return false
-		}
-		return true;
+		
+		return xpath;
 	}
 
 
