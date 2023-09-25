@@ -97,12 +97,12 @@ function initProbe(options, inputValues) {
 			const first = this.DOMMutationsToPop.splice(0, 1);
 			if (first.length == 1) {
 				const xpath = this.getXpathSelector(first[0])
-				
+
 				if (this.DOMMutationsed.indexOf(xpath) == -1) {
 					isExist = true;
 					firstDOMMutation.push(first[0]);
 					this.DOMMutationsed.push(xpath)
-				} else {}
+				} else { }
 			}
 
 		}
@@ -402,14 +402,14 @@ function initProbe(options, inputValues) {
 			// update angularjs model
 			this.trigger(els[a], 'input');
 		}
-		
+
 		let nodeListSubmit = element.querySelectorAll("[type=submit]");
-		if (nodeListSubmit.length == 0){
+		if (nodeListSubmit.length == 0) {
 			nodeListSubmit = element.querySelectorAll("[type=button]");
 		}
 		for (let node of nodeListSubmit) {
 			try {
-				if (node.formAction == "http://192.168.239.129:3000/#/login"){
+				if (node.formAction == "http://192.168.239.129:3000/#/login") {
 					console.log('登录')
 					await node.click();
 				}
@@ -422,12 +422,34 @@ function initProbe(options, inputValues) {
 		// return ret;
 	};
 
+	Probe.prototype.isLogout = function (el) {
+		// 检测退出登录
+		function isLogoutText(text, key) {
+			return String(text).toLowerCase().includes(key);
+		}
+		var is_logout = false;
+		for (const key of ["logout", "登出", "退出登录", "退出"]) {
+			
+			if (isLogoutText(el.id, key) || isLogoutText(el.name, key) || (String(el.innerText).length < 40 && isLogoutText(el.innerText, key)) || (el.parentNode && isLogoutText(el.parentNode.innerText, key))) {
+				console.log("退出登录");
+				is_logout = true;
+			}
+		}
+
+		return is_logout;
+		
+	}
 
 	Probe.prototype.trigger = function (el, evname) {
 		/* 	workaround for a phantomjs bug on linux (so maybe not a phantom bug but some linux libs??).
 			if you trigger click on input type=color evertything freezes... maybe due to some
 			color picker that pops up ...
 		*/
+
+		console.log(el);
+		
+		if(this.isLogout(el)) return;
+
 		if (el.tagName == "INPUT" && el.type.toLowerCase() == 'color' && evname == 'click') {
 			return;
 		}
@@ -481,7 +503,7 @@ function initProbe(options, inputValues) {
 		if ('createEvent' in document) {
 			// @TODO solve the "mouse event" problem
 			var evt = null;
-			
+
 			if (this.options.simulateRealEvents) {
 				if (this.options.mouseEvents.indexOf(evname) != -1) {
 					// 处理点击事件
@@ -509,7 +531,7 @@ function initProbe(options, inputValues) {
 		}
 		try {
 			el.removeEventListener(evname, pdh);
-		} catch (e) {}
+		} catch (e) { }
 		//this.triggerUserEvent("onEventTriggered", [el, evname])
 	};
 
@@ -538,9 +560,6 @@ function initProbe(options, inputValues) {
 		//if(events.length >0 ) return ['click']
 		return events;
 	};
-
-
-
 
 
 	Probe.prototype.triggerElementEvent = function (element, event) {
@@ -960,7 +979,7 @@ function initProbe(options, inputValues) {
 			id > 1 || k === 0 ? (id = '[' + id + ']') : (id = '')
 			xpath = '/' + elementTag + id + xpath
 		}
-		
+
 		return xpath;
 	}
 

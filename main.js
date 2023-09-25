@@ -273,7 +273,20 @@ Crawler.prototype._afterNavigation = async function (resp) {
 		});
 
 		_this._loaded = true;
-
+		
+		// 只符合用户输入页面就是登录页
+		
+		if (_this.targetUrl == "https://172.18.1.201/user/login") {
+			// 模拟登录
+			await loginHelper(_this._page, {
+				"url": "https://172.18.1.201/user/login",
+				"id":{
+				  "username": "chaojiankang",
+				  "password": "Test@123"
+				}
+			  }, 200);
+		  }
+		
 		await _this.dispatchProbeEvent("domcontentloaded", {});
 		await _this.waitForRequestsCompletion();
 		await _this.dispatchProbeEvent("pageinitialized", {});
@@ -296,14 +309,6 @@ Crawler.prototype.waitForRequestsCompletion = async function () {
 Crawler.prototype.start = async function () {
 
 	if (!this._loaded) {
-		// await this._goto("http://192.168.239.129:3000/#/login");
-		// await loginHelper(this._page, {
-		// 	"url": "http://192.168.239.129:3000/#/login",
-		// 	"name":{
-		// 	  "email": "1368628542@qq.com",
-		// 	  "password": "Abc$1234"
-		// 	}
-		//   }, 200);
 		await this.load();
 	}
 
@@ -322,13 +327,10 @@ Crawler.prototype.start = async function () {
 }
 
 
-
-
 Crawler.prototype.stop = function () {
 	this._stop = true;
 
 }
-
 
 Crawler.prototype.on = function (eventName, handler) {
 	// 回调函数
@@ -706,8 +708,6 @@ Crawler.prototype.getDOMTreeAsArray = async function (node) {
 
 
 
-
-
 Crawler.prototype.isAttachedToDOM = async function (node) {
 	// 判断DOM是否是位于根页面，或者存在html类型
 	if (node == this._page) {
@@ -808,6 +808,8 @@ Crawler.prototype._crawlDOM = async function (node, layer) {
 
 	let analyzed = 0;
 	for (let el of dom) {
+
+
 
 		analyzed = analyzed + 1
 		console.log("------layer--------" + layer + "------domlenth------" + dom.length + '------analyzed-------' + analyzed)

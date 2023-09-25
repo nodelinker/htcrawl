@@ -1,31 +1,31 @@
 const htcrawl = require('./main.js');
 const fs = require('fs');
 
-(async () =>{
-    const crawler = await htcrawl.launch("http://192.168.239.129:3000/#/login", {headlessChrome: false, openChromeDevtoos:false});
+(async () => {
+  const crawler = await htcrawl.launch("https://172.18.1.201/user/login", { headlessChrome: false, openChromeDevtoos: false });
 
-    crawler._page.on('console', (msg) =>{
-      console.log('PAGE LOG:', msg.text())
-    });
+  crawler._page.on('console', (msg) => {
+    console.log('PAGE LOG:', msg.text())
+  });
 
-// Print out the url of ajax calls
-crawler.on("xhr", e => {
-  console.log("XHR to " + e.params.request.url);
-  fs.appendFileSync("xhrFetchUrl.log", e.params.request.url + "\n");
-});
+  // Print out the url of ajax calls
+  crawler.on("xhr", e => {
+    console.log("XHR to " + e.params.request.url);
+    fs.appendFileSync("xhrFetchUrl.log", e.params.request.url + "\n");
+  });
 
 
-crawler.on("fetch", e => {
-  console.log("fetch to " + e.params.request.url);
-  fs.appendFileSync("xhrFetchUrl.log", e.params.request.url + "\n");
-});
+  crawler.on("fetch", e => {
+    console.log("fetch to " + e.params.request.url);
+    fs.appendFileSync("xhrFetchUrl.log", e.params.request.url + "\n");
+  });
 
-// crawler.on("earlydetach", e => {
-//     console.log("earlydetach " + e);
-//   });
+  // crawler.on("earlydetach", e => {
+  //     console.log("earlydetach " + e);
+  //   });
 
-// Start crawling!
-await crawler.start();
+  // Start crawling!
+  await crawler.start();
 
 
 })();
