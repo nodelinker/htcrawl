@@ -252,6 +252,20 @@ Crawler.prototype._afterNavigation = async function (resp) {
 		_this._cookies = utils.parseCookiesFromHeaders(hdrs, resp.url())
 
 
+		// 只符合用户输入页面就是登录页
+		
+		if (_this.targetUrl == "http://192.168.239.130:3000/#/login") {
+			// 模拟登录
+			await loginHelper(_this._page, {
+				"url": "http://192.168.239.130:3000/#/login",
+				"name":{
+				  "email": "1368628542@qq.com",
+				  "password": "Abc$1234"
+				}
+			  }, 500);
+		  }
+
+
 		if (!assertContentType(hdrs)) {
 			throw "Content type is not text/html";
 		}
@@ -261,7 +275,6 @@ Crawler.prototype._afterNavigation = async function (resp) {
 			// 监测DOM变化，存储数据
 			window.__PROBE__.DOMMutations = [];
 			let observer = new MutationObserver(mutations => {
-				console.log('DOM变化')
 				for (let m of mutations) {
 					if (m.type != 'childList' || m.addedNodes.length == 0) continue;
 					for (let e of m.addedNodes) {
@@ -273,19 +286,6 @@ Crawler.prototype._afterNavigation = async function (resp) {
 		});
 
 		_this._loaded = true;
-		
-		// 只符合用户输入页面就是登录页
-		
-		if (_this.targetUrl == "https://172.18.1.201/user/login") {
-			// 模拟登录
-			await loginHelper(_this._page, {
-				"url": "https://172.18.1.201/user/login",
-				"id":{
-				  "username": "chaojiankang",
-				  "password": "Test@123"
-				}
-			  }, 200);
-		  }
 		
 		await _this.dispatchProbeEvent("domcontentloaded", {});
 		await _this.waitForRequestsCompletion();
@@ -761,6 +761,8 @@ Crawler.prototype.getXpathSelector = async function (el) {
 			window.__PROBE__.XpathSelectors.push(xpath);
 			return false
 		}
+		window.__PROBE__.XpathCorrespondUrl[xpath] = el.baseURI;
+		console.log(xpath + "    对应    " + el.baseURI);
 		return true;
 	}, el)
 

@@ -6,10 +6,10 @@ let loginHelper = async (page, autoLogin, sleepTime) => {
     try{
         for (const key in autoLogin) {
             if (key != 'url') {
-                autoNameType = autoLogin[key]; // 该标签下的所有的值
+                const autoNameType = autoLogin[key]; // 该标签下的所有的值
                 for (const autoType in autoNameType) {
                     // 获取标签中的值
-                    autoValue = autoNameType[autoType]
+                    const autoValue = autoNameType[autoType]
                     if (autoType) {
                         await page.type(`input[${key}=${autoType}]`, autoValue);
                     }
@@ -22,8 +22,12 @@ let loginHelper = async (page, autoLogin, sleepTime) => {
             }
         }
     
-        await page.evaluate((autoDefaultValue) => {
+        await page.evaluate((autoDefaultValue, sleepTime) => {
             (async () => {
+                function sleep(ms) {
+                    return new Promise(resolve => setTimeout(resolve, ms));
+                }
+
                 for (const inputName in autoDefaultValue) {
                     // 赋值默认值
                     const valueInput = document.querySelector(`input[${autoDefaultValue[inputName]}=${inputName}]`);
@@ -36,15 +40,17 @@ let loginHelper = async (page, autoLogin, sleepTime) => {
                     nodeListSubmit = document.querySelectorAll("[type=button]");
                 }
                 for (let node of nodeListSubmit) {
-                    await window.sleep(sleepTime / 10);
+                   
                     try {
+                        // debugger;
+                        await sleep(sleepTime);
                         await node.click();
                     } catch (e) {
                         console.error(e);
                     }
                 }
             })();
-        }, autoDefaultValue);
+        }, autoDefaultValue, sleepTime);
     }catch{}
 }
 

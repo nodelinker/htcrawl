@@ -2,7 +2,7 @@ const htcrawl = require('./main.js');
 const fs = require('fs');
 
 (async () => {
-  const crawler = await htcrawl.launch("https://172.18.1.201/user/login", { headlessChrome: false, openChromeDevtoos: false });
+  const crawler = await htcrawl.launch("http://192.168.239.130:3000/#/login", { headlessChrome: false, openChromeDevtoos: true });
 
   crawler._page.on('console', (msg) => {
     console.log('PAGE LOG:', msg.text())

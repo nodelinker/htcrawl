@@ -63,6 +63,7 @@ function initProbe(options, inputValues) {
 		this.DOMMutationsed = [];
 		this.DOMMutationsToPop = [];
 		this.XpathSelectors = [];
+		this.XpathCorrespondUrl = {}
 
 	};
 
@@ -97,11 +98,13 @@ function initProbe(options, inputValues) {
 			const first = this.DOMMutationsToPop.splice(0, 1);
 			if (first.length == 1) {
 				const xpath = this.getXpathSelector(first[0])
-
+				
 				if (this.DOMMutationsed.indexOf(xpath) == -1) {
 					isExist = true;
 					firstDOMMutation.push(first[0]);
-					this.DOMMutationsed.push(xpath)
+					this.DOMMutationsed.push(xpath);
+					this.XpathCorrespondUrl[xpath] = first[0].baseURI;
+					console.log(xpath + "    对应    " + first[0].baseURI);
 				} else { }
 			}
 
@@ -114,11 +117,8 @@ function initProbe(options, inputValues) {
 		// 根据变化的DOM,过滤未触发的DOM
 
 		const roots = this.getRootNodes(this.DOMMutations)
-		// console.log('DOMMutations', this.DOMMutations.length)
 		this.DOMMutations = [];
 		this.DOMMutationsToPop = this.DOMMutationsToPop.concat(roots);
-		// console.log('DOMMutationsToPop', this.DOMMutationsToPop.length)
-		// debugger;
 		const first = this.filterMutation()
 		const firstDOMMutation = first.length == 1 ? first[0] : null;
 
@@ -403,20 +403,19 @@ function initProbe(options, inputValues) {
 			this.trigger(els[a], 'input');
 		}
 
-		let nodeListSubmit = element.querySelectorAll("[type=submit]");
-		if (nodeListSubmit.length == 0) {
-			nodeListSubmit = element.querySelectorAll("[type=button]");
-		}
-		for (let node of nodeListSubmit) {
-			try {
-				if (node.formAction == "http://192.168.239.129:3000/#/login") {
-					console.log('登录')
-					await node.click();
-				}
-			} catch (e) {
-				console.error(e);
-			}
-		}
+		// let nodeListSubmit = element.querySelectorAll("[type=submit]");
+		// if (nodeListSubmit.length == 0) {
+		// 	nodeListSubmit = element.querySelectorAll("[type=button]");
+		// }
+		// for (let node of nodeListSubmit) {
+		// 	try {
+		// 		if (node.baseURI == "http://192.168.239.130:3000/#/login") {
+		// 			await node.click();
+		// 		}
+		// 	} catch (e) {
+		// 		console.error(e);
+		// 	}
+		// }
 
 
 		// return ret;
@@ -445,8 +444,6 @@ function initProbe(options, inputValues) {
 			if you trigger click on input type=color evertything freezes... maybe due to some
 			color picker that pops up ...
 		*/
-
-		console.log(el);
 		
 		if(this.isLogout(el)) return;
 
