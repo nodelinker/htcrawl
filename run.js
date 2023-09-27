@@ -2,10 +2,20 @@ const htcrawl = require('./main.js');
 const fs = require('fs');
 
 (async () => {
-  const crawler = await htcrawl.launch("http://192.168.239.130:3000/#/login", { headlessChrome: false, openChromeDevtoos: true });
+  const crawler = await htcrawl.launch("http://192.168.239.130:3000/#/login", { headlessChrome: false, openChromeDevtoos: false });
 
   crawler._page.on('console', (msg) => {
-    console.log('PAGE LOG:', msg.text())
+    if (String(msg.text()).startsWith('{"XpathCorrespondUrl------>')){
+      // xpath 与 url 对应关系
+      const XpathCorrespondUrlData = JSON.parse(msg.text());
+      for (const key in XpathCorrespondUrlData){
+        fs.appendFileSync("XpathCorrespondUrl.log", JSON.stringify(XpathCorrespondUrlData[key]) + "\n");
+      }
+      
+    }else{
+      console.log('PAGE LOG:', msg.text());
+    }
+    
   });
 
   // Print out the url of ajax calls
@@ -29,4 +39,3 @@ const fs = require('fs');
 
 
 })();
-

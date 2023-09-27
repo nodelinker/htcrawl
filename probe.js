@@ -99,12 +99,12 @@ function initProbe(options, inputValues) {
 			if (first.length == 1) {
 				const xpath = this.getXpathSelector(first[0])
 				
-				if (this.DOMMutationsed.indexOf(xpath) == -1) {
+				if (xpath && this.DOMMutationsed.indexOf(xpath) == -1) {
 					isExist = true;
 					firstDOMMutation.push(first[0]);
 					this.DOMMutationsed.push(xpath);
 					this.XpathCorrespondUrl[xpath] = first[0].baseURI;
-					console.log(xpath + "    对应    " + first[0].baseURI);
+					console.log(JSON.stringify({[`XpathCorrespondUrl------>${xpath}`]: {"xpath": xpath, "displayName": first[0].innerText, "url": first[0].baseURI}}));
 				} else { }
 			}
 
@@ -259,10 +259,6 @@ function initProbe(options, inputValues) {
 	}
 
 	// END OF class Request..
-
-
-
-
 
 	// returns true if the value has been set
 	Probe.prototype.setVal = async function (el) {

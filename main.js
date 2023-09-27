@@ -58,22 +58,22 @@ exports.launch = async function (url, options) {
 			let r = crawler._pendingRequests[i];
 			let events = { xhr: "xhrCompleted", fetch: "fetchCompleted" };
 			try {
-			if (r.p.response()) {
-				let rtxt = null;
-				rtxt = await r.p.response().text();
-				await crawler.dispatchProbeEvent(events[r.h.type], {
-					request: r.h,
-					response: rtxt
-				});
+				if (r.p.response()) {
+					let rtxt = null;
+					rtxt = await r.p.response().text();
+					await crawler.dispatchProbeEvent(events[r.h.type], {
+						request: r.h,
+						response: rtxt
+					});
+					crawler._pendingRequests.splice(i, 1);
+				}
+				if (r.p.failure()) {
+					//console.log("*** FAILUREResponse for " + r.p.url())
+					crawler._pendingRequests.splice(i, 1);
+				}
+			} catch (e) {
 				crawler._pendingRequests.splice(i, 1);
 			}
-			if (r.p.failure()) {
-				//console.log("*** FAILUREResponse for " + r.p.url())
-				crawler._pendingRequests.splice(i, 1);
-			}
-		} catch (e) {
-			crawler._pendingRequests.splice(i, 1);
-		 }
 		}
 
 		if (crawler._stop) {
@@ -82,7 +82,7 @@ exports.launch = async function (url, options) {
 		}
 	}, 50);
 
-	
+
 	browser.on("targetcreated", async (target) => {
 		if (crawler._allowNewWindows) {
 			return;
@@ -249,22 +249,7 @@ Crawler.prototype._afterNavigation = async function (resp) {
 			//return;
 		}
 		var hdrs = resp.headers();
-		_this._cookies = utils.parseCookiesFromHeaders(hdrs, resp.url())
-
-
-		// 只符合用户输入页面就是登录页
-		
-		if (_this.targetUrl == "http://192.168.239.130:3000/#/login") {
-			// 模拟登录
-			await loginHelper(_this._page, {
-				"url": "http://192.168.239.130:3000/#/login",
-				"name":{
-				  "email": "1368628542@qq.com",
-				  "password": "Abc$1234"
-				}
-			  }, 500);
-		  }
-
+		_this._cookies = utils.parseCookiesFromHeaders(hdrs, resp.url());
 
 		if (!assertContentType(hdrs)) {
 			throw "Content type is not text/html";
@@ -286,7 +271,22 @@ Crawler.prototype._afterNavigation = async function (resp) {
 		});
 
 		_this._loaded = true;
-		
+
+
+		// 只符合用户输入页面就是登录页
+
+		if (_this.targetUrl == "http://192.168.239.130:3000/#/login") {
+			// 模拟登录
+			await loginHelper(_this._page, {
+				"url": "http://192.168.239.130:3000/#/login",
+				"name": {
+					"email": "1368628542@qq.com",
+					"password": "Abc$1234"
+				}
+			}, 500, true);
+		}
+
+
 		await _this.dispatchProbeEvent("domcontentloaded", {});
 		await _this.waitForRequestsCompletion();
 		await _this.dispatchProbeEvent("pageinitialized", {});
@@ -756,13 +756,13 @@ Crawler.prototype.getXpathSelector = async function (el) {
 	// 判断xpath
 	return await this._page.evaluate(el => {
 		const xpath = window.__PROBE__.getXpathSelector(el);
-		if (window.__PROBE__.XpathSelectors.indexOf(xpath) == -1) {
+		if (xpath && window.__PROBE__.XpathSelectors.indexOf(xpath) == -1) {
 			console.log(xpath)
 			window.__PROBE__.XpathSelectors.push(xpath);
+			window.__PROBE__.XpathCorrespondUrl[xpath] = el.baseURI;
+			console.log(JSON.stringify({ [`XpathCorrespondUrl------>${xpath}`]: { "xpath": xpath, "displayName": el.innerText, "url": el.baseURI } }));
 			return false
 		}
-		window.__PROBE__.XpathCorrespondUrl[xpath] = el.baseURI;
-		console.log(xpath + "    对应    " + el.baseURI);
 		return true;
 	}, el)
 

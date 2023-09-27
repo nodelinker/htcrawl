@@ -1,7 +1,8 @@
 
-let loginHelper = async (page, autoLogin, sleepTime) => {
+let loginHelper = async (page, autoLogin, sleepTime, functionSwitchSpa) => {
 
     let autoDefaultValue = []
+    const loginUrl = autoLogin.url
     // 登录模拟
     try{
         for (const key in autoLogin) {
@@ -22,8 +23,9 @@ let loginHelper = async (page, autoLogin, sleepTime) => {
             }
         }
     
-        await page.evaluate((autoDefaultValue, sleepTime) => {
+        await page.evaluate((loginUrl, autoDefaultValue, sleepTime, functionSwitchSpa) => {
             (async () => {
+                
                 function sleep(ms) {
                     return new Promise(resolve => setTimeout(resolve, ms));
                 }
@@ -39,18 +41,25 @@ let loginHelper = async (page, autoLogin, sleepTime) => {
                 if (nodeListSubmit.length == 0){
                     nodeListSubmit = document.querySelectorAll("[type=button]");
                 }
+
                 for (let node of nodeListSubmit) {
-                   
                     try {
                         // debugger;
                         await sleep(sleepTime);
                         await node.click();
+                        if (functionSwitchSpa){
+                            const xpath = window.__PROBE__.getXpathSelector(node);
+                            console.log(JSON.stringify({[`XpathCorrespondUrl------>${xpath}`]: {"xpath": xpath, "displayName": node.innerText, "url": loginUrl}}));
+                        }
+                        
                     } catch (e) {
                         console.error(e);
                     }
                 }
+
+                return xpathList
             })();
-        }, autoDefaultValue, sleepTime);
+        }, loginUrl, autoDefaultValue, sleepTime, functionSwitchSpa);
     }catch{}
 }
 
