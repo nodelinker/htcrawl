@@ -275,15 +275,15 @@ Crawler.prototype._afterNavigation = async function (resp) {
 
 		// 只符合用户输入页面就是登录页
 
-		if (_this.targetUrl == "http://192.168.239.130:3000/#/login") {
+		if (_this.targetUrl == "http://192.168.239.129:3000/#/login") {
 			// 模拟登录
 			await loginHelper(_this._page, {
-				"url": "http://192.168.239.130:3000/#/login",
-				"name": {
-					"email": "1368628542@qq.com",
-					"password": "Abc$1234"
+				"url": "http://192.168.239.129:3000/#/login",
+				"name":{
+				  "email": "1368628542@qq.com",
+				  "password": "Abc$1234"
 				}
-			}, 500, true);
+			  }, 100, true);
 		}
 
 
@@ -574,6 +574,14 @@ Crawler.prototype.bootstrapPage = async function () {
 		if (options.userAgent) {
 			await page.setUserAgent(options.userAgent);
 		}
+
+		await page.evaluateOnNewDocument(() => {
+			// 修改 JavaScript 环境，模拟正常浏览器
+			Object.defineProperty(navigator, 'webdriver', {
+			  get: () => false,
+			});
+		  });
+		  
 
 		await this._page.setDefaultNavigationTimeout(this.options.navigationTimeout);
 

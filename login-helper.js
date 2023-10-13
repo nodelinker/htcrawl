@@ -4,7 +4,7 @@ let loginHelper = async (page, autoLogin, sleepTime, functionSwitchSpa) => {
     let autoDefaultValue = []
     const loginUrl = autoLogin.url
     // 登录模拟
-    try{
+    try {
         for (const key in autoLogin) {
             if (key != 'url') {
                 const autoNameType = autoLogin[key]; // 该标签下的所有的值
@@ -15,17 +15,17 @@ let loginHelper = async (page, autoLogin, sleepTime, functionSwitchSpa) => {
                         await page.type(`input[${key}=${autoType}]`, autoValue);
                     }
                     else {
-                        
-                        autoDefaultValue.push({autoType: key})
+
+                        autoDefaultValue.push({ autoType: key })
                     }
                 }
-                
+
             }
         }
-    
+
         await page.evaluate((loginUrl, autoDefaultValue, sleepTime, functionSwitchSpa) => {
             (async () => {
-                
+
                 function sleep(ms) {
                     return new Promise(resolve => setTimeout(resolve, ms));
                 }
@@ -38,7 +38,7 @@ let loginHelper = async (page, autoLogin, sleepTime, functionSwitchSpa) => {
                     }
                 }
                 let nodeListSubmit = document.querySelectorAll("[type=submit]");
-                if (nodeListSubmit.length == 0){
+                if (nodeListSubmit.length == 0) {
                     nodeListSubmit = document.querySelectorAll("[type=button]");
                 }
 
@@ -47,11 +47,11 @@ let loginHelper = async (page, autoLogin, sleepTime, functionSwitchSpa) => {
                         // debugger;
                         await sleep(sleepTime);
                         await node.click();
-                        if (functionSwitchSpa){
+                        if (functionSwitchSpa) {
                             const xpath = window.__PROBE__.getXpathSelector(node);
-                            console.log(JSON.stringify({[`XpathCorrespondUrl------>${xpath}`]: {"xpath": xpath, "displayName": node.innerText, "url": loginUrl}}));
+                            console.log(JSON.stringify({ [`XpathCorrespondUrl------>${xpath}`]: { "xpath": xpath, "displayName": node.innerText, "url": loginUrl } }));
                         }
-                        
+
                     } catch (e) {
                         console.error(e);
                     }
@@ -60,7 +60,7 @@ let loginHelper = async (page, autoLogin, sleepTime, functionSwitchSpa) => {
                 return xpathList
             })();
         }, loginUrl, autoDefaultValue, sleepTime, functionSwitchSpa);
-    }catch{}
+    } catch { }
 }
 
 module.exports = loginHelper;
