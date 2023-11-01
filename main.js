@@ -11,6 +11,7 @@ version.
 
 "use strict";
 
+const fs = require('fs');
 const puppeteer = require('puppeteer');
 const defaults = require('./options').options;
 const probe = require("./probe");
@@ -211,6 +212,21 @@ Crawler.prototype.errors = function () {
 Crawler.prototype.load = async function () {
 	// 加载URL
 	const resp = await this._goto(this.targetUrl);
+
+	if (this.options.localStorageByLogin) {
+		// 存储登录信息
+		await this._page.evaluate((localStorageByLogin) => {
+			for (const key in localStorageByLogin){
+				console.log(key);
+				localStorage.setItem(key, localStorageByLogin[key]);
+			}
+			
+		}, this.options.localStorageByLogin);
+		const resp = await this._goto(this.targetUrl);
+		return await this._afterNavigation(resp);
+	}
+
+	
 	return await this._afterNavigation(resp);
 };
 
@@ -275,17 +291,17 @@ Crawler.prototype._afterNavigation = async function (resp) {
 
 		// 只符合用户输入页面就是登录页
 
-		if (_this.targetUrl == "http://192.168.239.129:3000/#/login") {
+		if (_this.targetUrl == "https://localhost:3443/#/login") {
 			// 模拟登录
+			console.log('--------------登录-----------------')
 			await loginHelper(_this._page, {
-				"url": "http://192.168.239.129:3000/#/login",
-				"name":{
-				  "email": "1368628542@qq.com",
-				  "password": "Abc$1234"
+				"url": "https://localhost:3443/#/login",
+				"id": {
+					"txtEmailAddress": "1368628542@qq.com",
+					"txtPassword": "Abc$1234"
 				}
-			  }, 100, true);
+			}, 100, true);
 		}
-
 
 		await _this.dispatchProbeEvent("domcontentloaded", {});
 		await _this.waitForRequestsCompletion();
@@ -316,8 +332,8 @@ Crawler.prototype.start = async function () {
 		this._stop = false;
 		await this.fillInputValues(this._page);
 		await this._crawlDOM();
+		this.stop();
 		await this._browser.close();
-		this._stop = true;
 		return this;
 	} catch (e) {
 		this._errors.push(["navigation", "navigation aborted"]);
@@ -530,6 +546,12 @@ Crawler.prototype.bootstrapPage = async function () {
 	// 	if(p) p.close();
 	// });
 
+	page.exposeFunction("__xpath_correspond_url_data__", (msg) => {
+		const XpathCorrespondUrlData = JSON.parse(msg);
+		for (const key in XpathCorrespondUrlData) {
+			fs.appendFileSync("XpathCorrespondUrl.log", JSON.stringify(XpathCorrespondUrlData[key]) + "\n");
+		}
+	});
 
 	page.exposeFunction("__htcrawl_probe_event__", (name, params) => { return this.dispatchProbeEvent(name, params) }); // <- automatically awaited.."If the puppeteerFunction returns a Promise, it will be awaited."
 
@@ -557,13 +579,13 @@ Crawler.prototype.bootstrapPage = async function () {
 			await page.setExtraHTTPHeaders(options.extraHeaders);
 		}
 		for (let i = 0; i < options.setCookies.length; i++) {
-			if (!options.setCookies[i].expires)
-				options.setCookies[i].expires = parseInt((new Date()).getTime() / 1000) + (60 * 60 * 24 * 365);
+			// if (!options.setCookies[i].expires)
+			// 	options.setCookies[i].expires = parseInt((new Date()).getTime() / 1000) + (60 * 60 * 24 * 365);
 			//console.log(options.setCookies[i]);
 			try {
 				await page.setCookie(options.setCookies[i]);
 			} catch (e) {
-				//console.log(e)
+				console.log(e)
 			}
 		}
 
@@ -578,10 +600,10 @@ Crawler.prototype.bootstrapPage = async function () {
 		await page.evaluateOnNewDocument(() => {
 			// 修改 JavaScript 环境，模拟正常浏览器
 			Object.defineProperty(navigator, 'webdriver', {
-			  get: () => false,
+				get: () => false,
 			});
-		  });
-		  
+		});
+
 
 		await this._page.setDefaultNavigationTimeout(this.options.navigationTimeout);
 
@@ -768,7 +790,7 @@ Crawler.prototype.getXpathSelector = async function (el) {
 			console.log(xpath)
 			window.__PROBE__.XpathSelectors.push(xpath);
 			window.__PROBE__.XpathCorrespondUrl[xpath] = el.baseURI;
-			console.log(JSON.stringify({ [`XpathCorrespondUrl------>${xpath}`]: { "xpath": xpath, "displayName": el.innerText, "url": el.baseURI } }));
+			window.__xpath_correspond_url_data__(JSON.stringify({ [`XpathCorrespondUrl------>${xpath}`]: { "xpath": xpath, "displayName": el.innerText && el.innerText.length <= 50 ? el.innerText : '', "url": el.baseURI } }));
 			return false
 		}
 		return true;

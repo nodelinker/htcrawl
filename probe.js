@@ -104,7 +104,7 @@ function initProbe(options, inputValues) {
 					firstDOMMutation.push(first[0]);
 					this.DOMMutationsed.push(xpath);
 					this.XpathCorrespondUrl[xpath] = first[0].baseURI;
-					console.log(JSON.stringify({[`XpathCorrespondUrl------>${xpath}`]: {"xpath": xpath, "displayName": first[0].innerText, "url": first[0].baseURI}}));
+					window.__xpath_correspond_url_data__(JSON.stringify({[`XpathCorrespondUrl------>${xpath}`]: {"xpath": xpath, "displayName": first[0].innerText && first[0].innerText.length <=50 ? first[0].innerText : '', "url": first[0].baseURI}}));
 				} else { }
 			}
 

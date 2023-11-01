@@ -44,20 +44,18 @@ let loginHelper = async (page, autoLogin, sleepTime, functionSwitchSpa) => {
 
                 for (let node of nodeListSubmit) {
                     try {
-                        // debugger;
-                        await sleep(sleepTime);
+                        debugger;
+                        // await sleep(sleepTime);
                         await node.click();
                         if (functionSwitchSpa) {
                             const xpath = window.__PROBE__.getXpathSelector(node);
-                            console.log(JSON.stringify({ [`XpathCorrespondUrl------>${xpath}`]: { "xpath": xpath, "displayName": node.innerText, "url": loginUrl } }));
+                            window.__xpath_correspond_url_data__(JSON.stringify({ [`XpathCorrespondUrl------>${xpath}`]: { "xpath": xpath, "displayName":  node.innerText && node.innerText.length <=50 ? node.innerText : '', "url": loginUrl } }));
                         }
 
                     } catch (e) {
-                        console.error(e);
+                        console.log(e);
                     }
                 }
-
-                return xpathList
             })();
         }, loginUrl, autoDefaultValue, sleepTime, functionSwitchSpa);
     } catch { }
