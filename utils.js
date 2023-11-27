@@ -107,13 +107,13 @@ exports.Request = Request;
 		window.__PROBE__.triggerNavigationEvent(url);
 	}
 
-	if(options.browserLocalstorage){
+	// if(options.browserLocalstorage){
 
-		for(let l of options.browserLocalstorage){
-			//console.log(l)
-			window.localStorage.setItem(l[0] , l[1]);
-		}
-	}
+	// 	for(let l of options.browserLocalstorage){
+	// 		//console.log(l)
+	// 		window.localStorage.setItem(l[0] , l[1]);
+	// 	}
+	// }
 
 
 

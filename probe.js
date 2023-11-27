@@ -104,7 +104,7 @@ function initProbe(options, inputValues) {
 					firstDOMMutation.push(first[0]);
 					this.DOMMutationsed.push(xpath);
 					this.XpathCorrespondUrl[xpath] = first[0].baseURI;
-					window.__xpath_correspond_url_data__(JSON.stringify({[`XpathCorrespondUrl------>${xpath}`]: {"xpath": xpath, "displayName": first[0].innerText && first[0].innerText.length <=50 ? first[0].innerText : '', "url": first[0].baseURI}}));
+					window.__xpath_correspond_url_data__(JSON.stringify({"xpath": xpath, "displayName": first[0].innerText && first[0].innerText.length <=50 ? first[0].innerText : '', "url": first[0].baseURI}));
 				} else { }
 			}
 
@@ -399,39 +399,37 @@ function initProbe(options, inputValues) {
 			this.trigger(els[a], 'input');
 		}
 
-		// let nodeListSubmit = element.querySelectorAll("[type=submit]");
-		// if (nodeListSubmit.length == 0) {
-		// 	nodeListSubmit = element.querySelectorAll("[type=button]");
-		// }
-		// for (let node of nodeListSubmit) {
-		// 	try {
-		// 		if (node.baseURI == "http://192.168.239.130:3000/#/login") {
-		// 			await node.click();
-		// 		}
-		// 	} catch (e) {
-		// 		console.error(e);
-		// 	}
-		// }
-
-
-		// return ret;
-	};
-
-	Probe.prototype.isLogout = function (el) {
-		// 检测退出登录
-		function isLogoutText(text, key) {
-			return String(text).toLowerCase().includes(key);
+		let nodeListSubmit = element.querySelectorAll("[type=submit]");
+		if (nodeListSubmit.length == 0) {
+			nodeListSubmit = element.querySelectorAll("[type=button]");
 		}
-		var is_logout = false;
-		for (const key of ["logout", "登出", "退出登录", "退出"]) {
-			
-			if (isLogoutText(el.id, key) || isLogoutText(el.name, key) || (String(el.innerText).length < 40 && isLogoutText(el.innerText, key)) || (el.parentNode && isLogoutText(el.parentNode.innerText, key))) {
-				console.log("退出登录");
-				is_logout = true;
+		for (let node of nodeListSubmit) {
+			try {
+				if (node.baseURI == this.options.autoLogin.url) {
+					await node.click();
+				}
+			} catch (e) {
+				console.error(e);
 			}
 		}
 
-		return is_logout;
+		return ret;
+	};
+
+	Probe.prototype.isexcluded = function (el) {
+		// 检测排除元素
+		function isexcludedKeywords(text, key) {
+			return String(text).toLowerCase().includes(key);
+		}
+		var is_excluded = false;
+		for (const key of this.options.excludedKeywords) {
+			
+			if (isexcludedKeywords(el.id, key) || isexcludedKeywords(el.name, key) || (String(el.innerText).length < 40 && isexcludedKeywords(el.innerText, key)) || (el.parentNode && isexcludedKeywords(el.parentNode.innerText, key))) {
+				is_excluded = true;
+			}
+		}
+
+		return is_excluded;
 		
 	}
 
@@ -441,7 +439,7 @@ function initProbe(options, inputValues) {
 			color picker that pops up ...
 		*/
 		
-		if(this.isLogout(el)) return;
+		if(this.isexcluded(el)) return;
 
 		if (el.tagName == "INPUT" && el.type.toLowerCase() == 'color' && evname == 'click') {
 			return;

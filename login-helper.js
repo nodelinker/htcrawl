@@ -44,8 +44,7 @@ let loginHelper = async (page, autoLogin, sleepTime, functionSwitchSpa) => {
 
                 for (let node of nodeListSubmit) {
                     try {
-                        debugger;
-                        // await sleep(sleepTime);
+                        await sleep(sleepTime);
                         await node.click();
                         if (functionSwitchSpa) {
                             const xpath = window.__PROBE__.getXpathSelector(node);

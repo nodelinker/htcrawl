@@ -13,7 +13,7 @@ version.
 
 const fs = require('fs');
 const puppeteer = require('puppeteer');
-const defaults = require('./options').options;
+const options = require('./options').options;
 const probe = require("./probe");
 const textComparator = require("./shingleprint");
 const loginHelper = require("./login-helper.js");
@@ -21,8 +21,7 @@ const loginHelper = require("./login-helper.js");
 const utils = require('./utils');
 const process = require('process');
 
-exports.launch = async function (url, options) {
-	options = options || {};
+exports.launch = async function (url, input_options) {
 	const chromeArgs = [
 		'--no-sandbox',
 		'--disable-setuid-sandbox',
@@ -38,8 +37,8 @@ exports.launch = async function (url, options) {
 		'--proxy-bypass-list=<-loopback>',
 		'--window-size=1300,1000'
 	];
-	for (let a in defaults) {
-		if (!(a in options)) options[a] = defaults[a];
+	for (let a in options) {
+		if ((a in input_options)) options[a] = input_options[a];
 	}
 	if (options.proxy) {
 		chromeArgs.push("--proxy-server=" + options.proxy);
@@ -133,7 +132,7 @@ function Crawler(targetUrl, options, browser) {
 		websocketsend: function () { },
 		formsubmit: function () { },
 		fillinput: function () { },
-		//requestscompleted: function(){},
+		otherrequests: function(){},
 		//dommodified: function(){},
 		newdom: function () { },
 		navigation: function () { },
@@ -213,15 +212,15 @@ Crawler.prototype.load = async function () {
 	// 加载URL
 	const resp = await this._goto(this.targetUrl);
 
-	if (this.options.localStorageByLogin) {
+	if (Object.entries(this.options.browserLocalstorage).length > 0) {
 		// 存储登录信息
-		await this._page.evaluate((localStorageByLogin) => {
-			for (const key in localStorageByLogin){
+		await this._page.evaluate((browserLocalstorage) => {
+			for (const key in browserLocalstorage){
 				console.log(key);
-				localStorage.setItem(key, localStorageByLogin[key]);
+				browserLocalstorage.setItem(key, browserLocalstorage[key]);
 			}
 			
-		}, this.options.localStorageByLogin);
+		}, this.options.browserLocalstorage);
 		const resp = await this._goto(this.targetUrl);
 		return await this._afterNavigation(resp);
 	}
@@ -288,21 +287,6 @@ Crawler.prototype._afterNavigation = async function (resp) {
 
 		_this._loaded = true;
 
-
-		// 只符合用户输入页面就是登录页
-
-		if (_this.targetUrl == "https://localhost:3443/#/login") {
-			// 模拟登录
-			console.log('--------------登录-----------------')
-			await loginHelper(_this._page, {
-				"url": "https://localhost:3443/#/login",
-				"id": {
-					"txtEmailAddress": "1368628542@qq.com",
-					"txtPassword": "Abc$1234"
-				}
-			}, 100, true);
-		}
-
 		await _this.dispatchProbeEvent("domcontentloaded", {});
 		await _this.waitForRequestsCompletion();
 		await _this.dispatchProbeEvent("pageinitialized", {});
@@ -331,7 +315,14 @@ Crawler.prototype.start = async function () {
 	try {
 		this._stop = false;
 		await this.fillInputValues(this._page);
+		const liElements = await this._page.$$('li');
 		await this._crawlDOM();
+		for (const liElement of liElements) {
+			try{
+				await liElement.click();
+				await this._crawlDOM();
+			}catch{}
+		}
 		this.stop();
 		await this._browser.close();
 		return this;
@@ -532,6 +523,8 @@ Crawler.prototype.bootstrapPage = async function () {
 
 		if (req.resourceType() == 'xhr' || req.resourceType() == 'fetch') {
 			return await this.handleRequest(req);
+		}else{
+			// await this.dispatchProbeEvent('otherrequests', { request: req });
 		}
 		req.continue(overrides);
 	});
@@ -548,9 +541,7 @@ Crawler.prototype.bootstrapPage = async function () {
 
 	page.exposeFunction("__xpath_correspond_url_data__", (msg) => {
 		const XpathCorrespondUrlData = JSON.parse(msg);
-		for (const key in XpathCorrespondUrlData) {
-			fs.appendFileSync("XpathCorrespondUrl.log", JSON.stringify(XpathCorrespondUrlData[key]) + "\n");
-		}
+		fs.appendFileSync("XpathCorrespondUrl.log", JSON.stringify(XpathCorrespondUrlData) + "\n");
 	});
 
 	page.exposeFunction("__htcrawl_probe_event__", (name, params) => { return this.dispatchProbeEvent(name, params) }); // <- automatically awaited.."If the puppeteerFunction returns a Promise, it will be awaited."
@@ -570,20 +561,13 @@ Crawler.prototype.bootstrapPage = async function () {
 
 
 	try {
-		if (options.referer) {
-			await page.setExtraHTTPHeaders({
-				'Referer': options.referer
-			});
+		if (options.customHeader) {
+			await page.setExtraHTTPHeaders(options.customHeader);
 		}
-		if (options.extraHeaders) {
-			await page.setExtraHTTPHeaders(options.extraHeaders);
-		}
-		for (let i = 0; i < options.setCookies.length; i++) {
-			// if (!options.setCookies[i].expires)
-			// 	options.setCookies[i].expires = parseInt((new Date()).getTime() / 1000) + (60 * 60 * 24 * 365);
-			//console.log(options.setCookies[i]);
+		for (let i = 0; i < options.customCookie.length; i++) {
+
 			try {
-				await page.setCookie(options.setCookies[i]);
+				await page.setCookie(options.customCookie[i]);
 			} catch (e) {
 				console.log(e)
 			}
@@ -790,7 +774,7 @@ Crawler.prototype.getXpathSelector = async function (el) {
 			console.log(xpath)
 			window.__PROBE__.XpathSelectors.push(xpath);
 			window.__PROBE__.XpathCorrespondUrl[xpath] = el.baseURI;
-			window.__xpath_correspond_url_data__(JSON.stringify({ [`XpathCorrespondUrl------>${xpath}`]: { "xpath": xpath, "displayName": el.innerText && el.innerText.length <= 50 ? el.innerText : '', "url": el.baseURI } }));
+			window.__xpath_correspond_url_data__(JSON.stringify({ "xpath": xpath, "displayName": el.innerText && el.innerText.length <= 50 ? el.innerText : '', "url": el.baseURI }));
 			return false
 		}
 		return true;
@@ -813,8 +797,7 @@ Crawler.prototype._crawlDOM = async function (node, layer) {
 
 	node = node || this._page;
 	layer = typeof layer != 'undefined' ? layer : 0;
-	if (layer == this.options.maximumRecursion) {
-		//console.log(">>>>RECURSON LIMIT REACHED :" + layer)
+	if (layer == this.options.depthLimit) {
 		return;
 	}
 
@@ -841,8 +824,6 @@ Crawler.prototype._crawlDOM = async function (node, layer) {
 	let analyzed = 0;
 	for (let el of dom) {
 
-
-
 		analyzed = analyzed + 1
 		console.log("------layer--------" + layer + "------domlenth------" + dom.length + '------analyzed-------' + analyzed)
 		if (this._stop) return;
@@ -863,7 +844,7 @@ Crawler.prototype._crawlDOM = async function (node, layer) {
 				await this.triggerElementEvent(el, event);
 				await this.dispatchProbeEvent("eventtriggered", { node: elsel, event: event });
 			}
-
+            
 			//console.log("waiting requests to compete " + this._pendingRequests)
 			await this.waitForRequestsCompletion();
 			//console.log("waiting requests to compete.... DONE"  + this._pendingRequests)
@@ -917,7 +898,7 @@ Crawler.prototype._crawlDOM = async function (node, layer) {
 				}
 
 			}
-		}
+		};
 
 	}
 }

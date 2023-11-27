@@ -1,37 +1,36 @@
 const htcrawl = require('./main.js');
 const fs = require('fs');
+const optionHelper = require("./option-helper.js");
 
-(async () => {
-  const crawler = await htcrawl.launch("https://172.18.1.199/task/addtask", { headlessChrome: false, openChromeDevtoos: true });
+const data = require('./test.json');
+optionHelper.option.parse(data);
 
-  crawler._page.on('console', (msg) => {
-    if (String(msg.text()).startsWith('{"XpathCorrespondUrl------>')){
-      // xpath 与 url 对应关系
-      const XpathCorrespondUrlData = JSON.parse(msg.text());
-      console.log(XpathCorrespondUrlData)
-      for (const key in XpathCorrespondUrlData){
-        fs.appendFileSync("XpathCorrespondUrl.log", JSON.stringify(XpathCorrespondUrlData[key]) + "\n");
-      }
-    }else{
-      console.log('PAGE LOG:', msg.text());
-    }
-    
-  });
+(async (options) => {
+  const crawler = await htcrawl.launch("http://192.168.239.130:3000/", options);
 
-  // Print out the url of ajax calls
+
   crawler.on("xhr", e => {
     console.log("XHR to " + e.params.request.url);
-    fs.appendFileSync("xhrFetchUrl.log", e.params.request.url + "\n");
+    fs.appendFileSync("xhrFetchUrl.log", "xhr: " + e.params.request.url + "\n");
   });
 
 
   crawler.on("fetch", e => {
     console.log("fetch to " + e.params.request.url);
-    fs.appendFileSync("xhrFetchUrl.log", e.params.request.url + "\n");
+    fs.appendFileSync("xhrFetchUrl.log", "fetch: " + e.params.request.url + "\n");
+  });
+
+
+  crawler.on("otherrequests", e => {
+    console.log("otherrequests to " + e.params.request.url());
+    fs.appendFileSync("xhrFetchUrl.log", "otherrequests: " + e.params.request.url() + "\n");
   });
 
 
   await crawler.start();
 
 
-})();
+})(optionHelper.option);
+
+
+
